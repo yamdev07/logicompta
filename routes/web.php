@@ -11,7 +11,10 @@ Route::get('/', function () {
 // Route pour la page de connexion
 Route::get('/login', function () {
     return view('login');
-});
+})->name('login');
+
+// Route pour traiter la soumission du formulaire de connexion
+Route::post('/login', [App\Http\Controllers\AuthController::class, 'webLogin']);
 
 // Route pour la page d'inscription
 Route::get('/signup', function () {
@@ -23,20 +26,20 @@ Route::get('/forgot-password', function () {
     return view('forgot-password');
 });
 
-// Route pour la page de profil
+// Route pour la page de profil (protégée)
 Route::get('/profile', function () {
     return view('profile');
-});
+})->middleware('auth');
 
 // Route pour la page de réinitialisation de mot de passe
 Route::get('/reset-password', function () {
     return view('reset-password');
 });
 
-// Route pour le dashboard
+// Route pour le dashboard (protégée)
 Route::get('/dashbord', function () {
     return view('dashbord');
-});
+})->middleware('auth');
 
 Route::prefix('accounting')->name('accounting.')->group(function () {
     Route::get('/journal', [JournalController::class, 'index'])->name('journal.index');

@@ -4,10 +4,12 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 
-// Routes publiques d'authentification
-Route::post('/register', [AuthController::class, 'register']);
-Route::post('/login', [AuthController::class, 'login']);
-Route::post('/logout', [AuthController::class, 'logout']);
+// Routes publiques d'authentification (avec middleware web pour les sessions)
+Route::middleware('web')->group(function () {
+    Route::post('/register', [AuthController::class, 'register']);
+    Route::post('/login', [AuthController::class, 'login']);
+    Route::post('/logout', [AuthController::class, 'logout']);
+});
 Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
 Route::post('/user-by-token', [AuthController::class, 'getUserByToken']); // Accès direct via token
 Route::put('/update-profile-by-token', [AuthController::class, 'updateProfileByToken']); // Mise à jour via token

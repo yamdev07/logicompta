@@ -95,6 +95,27 @@ class AuthController extends Controller
     }
 
     /**
+     * Connexion web (formulaire)
+     */
+    public function webLogin(Request $request)
+    {
+        $credentials = $request->validate([
+            'email' => 'required|email',
+            'password' => 'required',
+        ]);
+
+        if (Auth::attempt($credentials)) {
+            $request->session()->regenerate();
+            
+            return redirect()->intended('/dashbord');
+        }
+
+        return back()->withErrors([
+            'email' => 'Identifiants incorrects',
+        ])->onlyInput('email');
+    }
+
+    /**
      * Déconnexion
      */
     public function logout(Request $request)
