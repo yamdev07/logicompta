@@ -23,9 +23,8 @@ class User extends Authenticatable
         'prenom',
         'email',
         'password',
-        'telephone',
-        'role',
         'entreprise_id',
+        'role',
     ];
 
     /**
@@ -52,26 +51,10 @@ class User extends Authenticatable
     }
 
     /**
-     * Relation vers l'entreprise
+     * L'entreprise à laquelle appartient l'utilisateur
      */
     public function entreprise()
     {
         return $this->belongsTo(Entreprise::class);
-    }
-
-    /**
-     * Vérifie si l'utilisateur a une entreprise
-     */
-    public function hasEntreprise(): bool
-    {
-        return !is_null($this->entreprise_id);
-    }
-
-    /**
-     * Vérifie si l'utilisateur est admin
-     */
-    public function isAdmin(): bool
-    {
-        return $this->role === 'admin';
     }
 }

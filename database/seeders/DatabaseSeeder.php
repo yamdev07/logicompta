@@ -12,14 +12,15 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        
-
         // Appel des seeders comptables
         $this->call([
             AccountSeeder::class,
             EntrepriseSeeder::class,
             UserSeeder::class,
             JournalSeeder::class,
+            EntrepriseSeeder::class,
+            UserSeeder::class,
+            JournalEntrySeeder::class,
         ]);
     }
 }

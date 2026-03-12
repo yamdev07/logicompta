@@ -5,14 +5,36 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Str;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Auth;
 use App\Models\User;
 use App\Models\PasswordResetToken;
 use App\Mail\ProfileAccessMail;
 
 class AuthController extends Controller
 {
+    /**
+     * Web - Pré-inscription (sauvegarde en session avant setup entreprise)
+     */
+    public function postSignup(Request $request)
+    {
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|string|email|max:255|unique:users',
+            'password' => 'required|string|min:8|confirmed',
+        ]);
+
+        // Stocker les données en session pour l'étape suivante
+        session(['pending_user' => [
+            'name' => $request->name,
+            'email' => $request->email,
+            'password' => $request->password,
+        ]]);
+
+        return redirect()->route('entreprise.setup');
+    }
+
     /**
      * Inscription d'un nouvel utilisateur
      */
@@ -65,32 +87,42 @@ class AuthController extends Controller
         ]);
 
         if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur de validation',
-                'errors' => $validator->errors()
-            ], 422);
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Erreur de validation',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+            return back()->withErrors($validator)->withInput();
         }
 
         // Vérification des identifiants
         $user = User::where('email', $request->email)->first();
 
         if (!$user || !Hash::check($request->password, $user->password)) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Identifiants incorrects'
-            ], 401);
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Identifiants incorrects'
+                ], 401);
+            }
+            return back()->with('error', 'Identifiants incorrects');
         }
 
-        // Création du token
-        $token = $user->createToken('comptafriq_token')->plainTextToken;
+        // Connexion avec session web
+        Auth::login($user);
+        session()->regenerate();
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Connexion réussie',
-            'user' => $user,
-            'token' => $token
-        ]);
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Connexion réussie',
+                'user' => $user
+            ]);
+        }
+
+        return redirect()->route('accounting.dashboard');
     }
 
     /**
@@ -98,13 +130,19 @@ class AuthController extends Controller
      */
     public function logout(Request $request)
     {
-        // Suppression du token actuel
-        $request->user()->currentAccessToken()->delete();
+        // Invalidation de la session web
+        Auth::logout();
+        session()->invalidate();
+        session()->regenerateToken();
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Déconnexion réussie'
-        ]);
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Déconnexion réussie'
+            ]);
+        }
+
+        return redirect()->route('login');
     }
 
     /**

@@ -13,19 +13,24 @@
         <div class="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
                 <p class="text-xs font-bold uppercase tracking-widest text-blue-200 mb-1">Tableau de bord</p>
-                <h1 class="text-3xl font-black">Bienvenue, <span id="dash-username">—</span> 👋</h1>
-                <p class="text-blue-100 mt-1 text-sm" id="dash-role-text">Chargement de votre profil...</p>
+                <h1 class="text-3xl font-black">Bienvenue, {{ $user->name }} 👋</h1>
+                <p class="text-blue-100 mt-1 text-sm">
+                    @if($user->role == 'admin') 🔑 Administateur @elseif($user->role == 'comptable') 📊 Comptable @else 👤 Utilisateur @endif
+                </p>
             </div>
-            <div id="dash-entreprise-badge" class="hidden bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl px-5 py-3 text-center min-w-[180px]">
+            @if($user->entreprise)
+            <div class="bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl px-5 py-3 text-center min-w-[180px]">
                 <p class="text-[10px] uppercase font-bold tracking-widest text-blue-200 mb-0.5">Entreprise</p>
-                <p class="font-bold text-white" id="dash-entreprise-name">—</p>
-                <p class="text-[10px] text-blue-300 mt-0.5 font-mono" id="dash-entreprise-code">—</p>
+                <p class="font-bold text-white">{{ $user->entreprise->name }}</p>
+                <p class="text-[10px] text-blue-300 mt-0.5 font-mono">ID: {{ $user->entreprise->code }}</p>
             </div>
+            @endif
         </div>
     </div>
 
     {{-- Bandeau Alerte : pas d'entreprise --}}
-    <div id="no-entreprise-banner" class="hidden">
+    @if(!$user->entreprise)
+    <div>
         <div class="bg-amber-50 dark:bg-amber-950/30 border-2 border-amber-200 dark:border-amber-700 rounded-2xl p-6">
             <div class="flex flex-col md:flex-row md:items-center gap-6">
                 <div class="flex items-start gap-4 flex-1">
@@ -34,30 +39,36 @@
                     </div>
                     <div>
                         <h3 class="font-bold text-amber-900 dark:text-amber-200">Aucune entreprise associée</h3>
-                        <p class="text-amber-700 dark:text-amber-400 text-sm mt-1">Associez votre compte à une entreprise pour accéder à toutes les fonctionnalités comptables.</p>
+                        <p class="text-black dark:text-amber-400 text-sm mt-1">Associez votre compte à une entreprise pour accéder à toutes les fonctionnalités comptables.</p>
                     </div>
                 </div>
 
                 {{-- Formulaire rapide de liaison --}}
                 <div class="flex flex-col sm:flex-row gap-3 flex-shrink-0">
-                    <div class="flex gap-2">
-                        <input type="text" id="quick-code" placeholder="Code entreprise..."
+                    <form action="{{ route('accounting.entreprise.join') }}" method="POST" class="flex gap-2">
+                        @csrf
+                        <input type="text" name="code" placeholder="Code entreprise..." required
                                class="px-4 py-2.5 border-2 border-amber-200 dark:border-amber-700 rounded-xl bg-white dark:bg-amber-950/50 text-gray-800 dark:text-white font-mono text-sm uppercase focus:outline-none focus:border-primary transition-all w-44"
                                oninput="this.value=this.value.toUpperCase()">
-                        <button onclick="linkEntreprise()" id="link-btn"
+                        <button type="submit"
                                 class="px-4 py-2.5 bg-primary text-white font-bold rounded-xl hover:bg-primary-light transition-all text-sm flex items-center gap-2 whitespace-nowrap">
                             <i data-lucide="link" class="w-4 h-4"></i> Lier
                         </button>
-                    </div>
+                    </form>
                     <a href="{{ url('/entreprise-setup') }}"
                        class="px-4 py-2.5 border-2 border-amber-300 dark:border-amber-600 text-amber-800 dark:text-amber-300 font-bold rounded-xl hover:bg-amber-100 dark:hover:bg-amber-900/30 transition-all text-sm text-center flex items-center gap-2 whitespace-nowrap">
                         <i data-lucide="plus-circle" class="w-4 h-4"></i> Créer une entreprise
                     </a>
                 </div>
             </div>
-            <div id="link-msg" class="hidden mt-3 text-sm font-medium rounded-lg px-4 py-2"></div>
+            @if(session('error'))
+                <div class="mt-3 text-sm font-medium rounded-lg px-4 py-2 bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300">
+                    ❌ {{ session('error') }}
+                </div>
+            @endif
         </div>
     </div>
+    @endif
 
     {{-- Modules --}}
     <div>
@@ -158,111 +169,6 @@
 
 @section('scripts')
 <script>
-const API_BASE = '{{ url('/api') }}';
-const USER_KEY = 'comptafriq_user';
-
-function getUser() {
-    try { return JSON.parse(localStorage.getItem(USER_KEY)) || null; }
-    catch { return null; }
-}
-
-function getRoleLabel(role) {
-    const roles = { admin: '🔑 Administrateur', comptable: '📊 Comptable', utilisateur: '👤 Utilisateur' };
-    return roles[role] || '👤 Utilisateur';
-}
-
-// Initialiser le dashboard
-async function initDashboard() {
-    const user = getUser();
-
-    if (user) {
-        document.getElementById('dash-username').textContent = user.name || 'Utilisateur';
-        document.getElementById('dash-role-text').textContent = getRoleLabel(user.role || 'utilisateur');
-
-        if (user.entreprise_id) {
-            // Charger les infos entreprise
-            try {
-                const res  = await fetch(`${API_BASE}/entreprise/info?user_id=${user.id}`);
-                const data = await res.json();
-                if (data.success) {
-                    document.getElementById('dash-entreprise-badge').classList.remove('hidden');
-                    document.getElementById('dash-entreprise-name').textContent = data.entreprise.name;
-                    document.getElementById('dash-entreprise-code').textContent = 'ID: ' + data.entreprise.code;
-                }
-            } catch {}
-        } else {
-            // Afficher le bandeau d'alerte
-            document.getElementById('no-entreprise-banner').classList.remove('hidden');
-        }
-    }
-}
-
-// Lier une entreprise depuis le dashboard
-async function linkEntreprise() {
-    const code = document.getElementById('quick-code').value.trim().toUpperCase();
-    const user  = getUser();
-    const msg   = document.getElementById('link-msg');
-    const btn   = document.getElementById('link-btn');
-
-    if (!code) {
-        showLinkMsg('Saisissez un code entreprise.', 'amber');
-        return;
-    }
-
-    if (!user) {
-        showLinkMsg('Session expirée. Veuillez vous reconnecter.', 'red');
-        return;
-    }
-
-    btn.disabled = true;
-    btn.innerHTML = '<i data-lucide="loader" class="w-4 h-4 animate-spin"></i>';
-
-    try {
-        const res  = await fetch(`${API_BASE}/entreprise/join`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ code: code, user_id: user.id })
-        });
-
-        const data = await res.json();
-
-        if (data.success) {
-            user.entreprise_id = data.entreprise.id;
-            user.role = 'comptable';
-            localStorage.setItem(USER_KEY, JSON.stringify(user));
-
-            showLinkMsg('✅ ' + data.message, 'green');
-            setTimeout(() => window.location.reload(), 1800);
-        } else {
-            showLinkMsg('❌ ' + (data.message || 'Code introuvable.'), 'red');
-        }
-    } catch {
-        showLinkMsg('Erreur de connexion au serveur.', 'red');
-    } finally {
-        btn.disabled = false;
-        lucide.createIcons();
-        btn.innerHTML = '<i data-lucide="link" class="w-4 h-4"></i> Lier';
-        lucide.createIcons();
-    }
-}
-
-function showLinkMsg(text, color) {
-    const el = document.getElementById('link-msg');
-    const colors = {
-        green:  'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300',
-        red:    'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300',
-        amber:  'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300',
-    };
-    el.className = colors[color] + ' mt-3 text-sm font-medium rounded-lg px-4 py-2';
-    el.textContent = text;
-    el.classList.remove('hidden');
-}
-
-// Soumettre avec Entrée dans le champ code
-document.getElementById('quick-code')?.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') linkEntreprise();
-});
-
-initDashboard();
+lucide.createIcons();
 </script>
 @endsection
