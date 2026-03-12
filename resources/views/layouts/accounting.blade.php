@@ -60,6 +60,13 @@
             background: var(--card-bg);
             border-radius: 0.75rem;
             display: block;
+            cursor: grab;
+            user-select: none;
+            scrollbar-width: thin;
+        }
+
+        .table-responsive:active {
+            cursor: grabbing;
         }
 
         @media (prefers-color-scheme: dark) {
@@ -198,32 +205,14 @@
             .sidebar {
                 position: fixed;
                 top: 0;
-                left: 0;
-                width: 260px;
+                left: -260px;
                 height: 100dvh;
                 z-index: 2000; 
-                transform: translateX(-100%);
                 padding-top: calc(1rem + env(safe-area-inset-top, 0));
                 padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0));
             }
             .sidebar.mobile-open {
-                transform: translateX(0);
-            }
-            
-            /* Orientation de la transition vers le transform */
-            .sidebar-transition {
-                transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            }
-            
-            #sidebar-overlay {
-                transition: opacity 0.3s ease, visibility 0.3s;
-                visibility: hidden;
-                opacity: 0;
-                display: block !important; /* On gère par visibility/opacity pour la fluidité */
-            }
-            #sidebar-overlay.active {
-                visibility: visible;
-                opacity: 1;
+                left: 0;
             }
             
             /* Propagation de la couleur du header vers le haut (encoche) */
@@ -246,8 +235,8 @@
     </script>
 </head>
 <body class="bg-bg min-h-screen">
-    <!-- Overlay for mobile (Visibility managed by JS) -->
-    <div id="sidebar-overlay" class="fixed inset-0 bg-gray-900/40 dark:bg-black/80 z-[1999] md:hidden"></div>
+    <!-- Overlay for mobile -->
+    <div id="sidebar-overlay" class="fixed inset-0 bg-gray-900/30 dark:bg-black/80 z-[1999] hidden md:hidden transition-opacity duration-300"></div>
 
     <div class="flex h-[100dvh] overflow-hidden relative">
         <!-- Sidebar -->
@@ -275,11 +264,12 @@
             </button>
 
             <div class="flex items-center mb-8 px-2 transition-all duration-300">
-                <img src="{{ asset('images/ChatGPT Image 11 mars 2026, 10_41_49.png') }}" alt="Comptafriq Logo" class="h-24 w-auto object-contain">
+                <img src="{{ asset('images/ChatGPT Image 11 mars 2026, 10_41_49.png') }}" alt="Comptafriq Logo" 
+                     class="h-24 w-auto object-contain dark:filter-none filter invert dark:brightness-110">
             </div>
             
             <nav class="flex flex-col gap-1">
-                <a href="/" class="flex items-center gap-4 px-4 py-3 rounded-xl font-medium transition-all {{ request()->is('/') ? 'bg-primary text-white shadow-md' : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-white/5' }}">
+                <a href="{{ route('accounting.dashboard') }}" class="flex items-center gap-4 px-4 py-3 rounded-xl font-medium transition-all {{ request()->routeIs('accounting.dashboard') ? 'bg-primary text-white shadow-md' : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-white/5' }}">
                     <i class="w-5 h-5" data-lucide="home"></i>
                     <span class="sidebar-label transition-all duration-300">Accueil</span>
                 </a>
@@ -318,8 +308,10 @@
                     <span class="sidebar-label transition-all duration-300">Guide & Aide</span>
                 </a>
 
-                <div class="sidebar-label text-[10px] uppercase font-bold text-gray-400 mt-6 px-4 mb-2 tracking-widest hidden md:block">Compte</div>
-                <button id="logout-btn" class="flex items-center gap-4 px-4 py-3 rounded-xl font-medium transition-all text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20 w-full text-left">
+                <form action="{{ route('logout') }}" method="POST" id="logout-form" class="hidden">
+                    @csrf
+                </form>
+                <button type="button" onclick="document.getElementById('logout-form').submit();" class="flex items-center gap-4 px-4 py-3 rounded-xl font-medium transition-all text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20 w-full text-left">
                     <i class="w-5 h-5" data-lucide="log-out"></i>
                     <span class="sidebar-label transition-all duration-300">Déconnexion</span>
                 </button>
@@ -335,7 +327,8 @@
                 </button>
                 
                 <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
-                    <img src="{{ asset('images/ChatGPT Image 11 mars 2026, 10_41_49.png') }}" alt="Comptafriq Logo" class="h-20 w-auto object-contain pointer-events-auto">
+                    <img src="{{ asset('images/ChatGPT Image 11 mars 2026, 10_41_49.png') }}" alt="Comptafriq Logo" 
+                         class="h-20 w-auto object-contain pointer-events-auto dark:filter-none filter invert dark:brightness-110">
                 </div>
                 
                 <div class="w-10"></div>
@@ -388,63 +381,15 @@
             });
         }
 
-        // Mobile Sidebar Toggle
-        const toggleMobile = (forceState) => {
-            const isOpen = forceState !== undefined ? forceState : !sidebar.classList.contains('mobile-open');
-            
-            if (isOpen) {
-                sidebar.classList.add('mobile-open');
-                sidebarOverlay.classList.add('active');
-            } else {
-                sidebar.classList.remove('mobile-open');
-                sidebarOverlay.classList.remove('active');
-            }
+        // Mobile Sidebar
+        const toggleMobile = () => {
+            sidebar.classList.toggle('mobile-open');
+            sidebarOverlay.classList.toggle('hidden');
         };
 
-        if (openMobileBtn) openMobileBtn.addEventListener('click', () => toggleMobile(true));
-        if (closeMobileBtn) closeMobileBtn.addEventListener('click', () => toggleMobile(false));
-        if (sidebarOverlay) sidebarOverlay.addEventListener('click', () => toggleMobile(false));
-
-        // --- Système de Swipe Fluide (Optimisé) ---
-        let touchStartX = 0;
-        let touchCurrentX = 0;
-        let isSwiping = false;
-
-        sidebar.addEventListener('touchstart', e => {
-            if (window.innerWidth > 768 || !sidebar.classList.contains('mobile-open')) return;
-            touchStartX = e.touches[0].clientX;
-            isSwiping = true;
-            sidebar.style.transition = 'none'; // Désactive transition CSS
-            sidebarOverlay.style.transition = 'none';
-        }, { passive: true });
-
-        sidebar.addEventListener('touchmove', e => {
-            if (!isSwiping) return;
-            touchCurrentX = e.touches[0].clientX;
-            let deltaX = touchStartX - touchCurrentX;
-            
-            if (deltaX > 0) { // On pousse vers la gauche
-                sidebar.style.transform = `translateX(${-deltaX}px)`;
-                let progress = Math.min(deltaX / 260, 1);
-                sidebarOverlay.style.opacity = (0.8 - (progress * 0.8)).toString(); // 0.8 est l'opacité max du black/80
-            }
-        }, { passive: true });
-
-        sidebar.addEventListener('touchend', e => {
-            if (!isSwiping) return;
-            isSwiping = false;
-            
-            sidebar.style.transition = ''; // Restore CSS transitions
-            sidebarOverlay.style.transition = '';
-            sidebarOverlay.style.opacity = '';
-            
-            let deltaX = touchStartX - touchCurrentX;
-            sidebar.style.transform = ''; 
-            
-            if (deltaX > 70) { // Seuil de fermeture
-                toggleMobile(false);
-            }
-        }, { passive: true });
+        if (openMobileBtn) openMobileBtn.addEventListener('click', toggleMobile);
+        if (closeMobileBtn) closeMobileBtn.addEventListener('click', toggleMobile);
+        if (sidebarOverlay) sidebarOverlay.addEventListener('click', toggleMobile);
 
         // Load Initial State
         const savedState = localStorage.getItem('sidebar-collapsed');
@@ -452,7 +397,7 @@
             setSidebarState(true);
         }
 
-        // JS STICKY HEADERS SYSTEM
+        // Déplacement du système de sticky headers ici pour une meilleure organisation
         const mainContent = document.querySelector('.main-content');
         
         const updateStickyHeaders = () => {
@@ -479,31 +424,121 @@
 
         if (mainContent) {
             mainContent.addEventListener('scroll', updateStickyHeaders);
-            // also update on resize or initial load
             window.addEventListener('resize', updateStickyHeaders);
             updateStickyHeaders();
         }
 
-        // Gestion de la déconnexion
-        document.getElementById('logout-btn').addEventListener('click', async function() {
-            try {
-                // Appel à l'API de déconnexion (gérée côté serveur)
-                const response = await fetch('/api/logout', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
-                    }
-                });
+        /* --- Système de Drag-to-Scroll pour les tableaux (H & V) --- */
+        const initDragToScroll = () => {
+            const wrappers = document.querySelectorAll('.table-responsive');
+            const mainContent = document.querySelector('.main-content');
+            
+            wrappers.forEach(wrapper => {
+                let isDown = false;
+                let startX, startY;
+                let scrollLeft, scrollTop;
 
-                // Redirection vers la page de connexion (que ce soit succès ou erreur)
-                window.location.href = '/login';
-            } catch (error) {
-                console.error('Erreur lors de la déconnexion:', error);
-                // En cas d'erreur réseau, redirection vers login
-                window.location.href = '/login';
+                const startDragging = (e) => {
+                    isDown = true;
+                    wrapper.style.cursor = 'grabbing';
+                    const pageX = e.pageX || e.touches[0].pageX;
+                    const pageY = e.pageY || e.touches[0].pageY;
+                    
+                    startX = pageX - wrapper.offsetLeft;
+                    startY = pageY - wrapper.offsetTop;
+                    
+                    scrollLeft = wrapper.scrollLeft;
+                    scrollTop = mainContent ? mainContent.scrollTop : 0;
+                };
+
+                const stopDragging = () => {
+                    isDown = false;
+                    wrapper.style.cursor = 'grab';
+                };
+
+                const moveDragging = (e) => {
+                    if (!isDown) return;
+                    e.preventDefault();
+                    
+                    const pageX = e.pageX || e.touches[0].pageX;
+                    const pageY = e.pageY || e.touches[0].pageY;
+                    
+                    const x = pageX - wrapper.offsetLeft;
+                    const y = pageY - wrapper.offsetTop;
+                    
+                    const walkX = (x - startX) * 2; 
+                    const walkY = (y - startY) * 2; 
+                    
+                    wrapper.scrollLeft = scrollLeft - walkX;
+                    if (mainContent) {
+                        mainContent.scrollTop = scrollTop - walkY;
+                    }
+                };
+
+                // Mouse Events
+                wrapper.addEventListener('mousedown', startDragging);
+                window.addEventListener('mouseup', stopDragging);
+                wrapper.addEventListener('mouseleave', stopDragging);
+                wrapper.addEventListener('mousemove', moveDragging);
+
+                // Touch Events
+                wrapper.addEventListener('touchstart', startDragging, { passive: true });
+                wrapper.addEventListener('touchend', stopDragging);
+                wrapper.addEventListener('touchmove', moveDragging, { passive: false });
+            });
+        };
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initDragToScroll);
+        } else {
+            initDragToScroll();
+        }
+
+        /* --- Navigation par Touches de Direction (Clavier) --- */
+        document.addEventListener('keydown', (e) => {
+            // Ne pas scroller si on est dans un champ de saisie ou qu'on interagit avec le menu
+            if (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) return;
+            if (e.target.closest('#sidebar')) return;
+
+            const scrollStep = 100; // Vitesse du scroll clavier
+            const mainContent = document.querySelector('.main-content');
+            const tables = document.querySelectorAll('.table-responsive');
+
+            // On ne gère manuellement que ce qui n'est pas "natif" ou mal géré
+            // Pour haut/bas, on ne scrolle le contenu que si aucune autre zone scrolable (comme le menu) n'est survolée
+            
+            switch(e.key) {
+                case 'ArrowUp':
+                    if (mainContent) {
+                        e.preventDefault();
+                        mainContent.scrollTop -= scrollStep;
+                    }
+                    break;
+                case 'ArrowDown':
+                    if (mainContent) {
+                        e.preventDefault();
+                        mainContent.scrollTop += scrollStep;
+                    }
+                    break;
+                case 'ArrowLeft':
+                    if (tables.length > 0) {
+                        e.preventDefault();
+                        tables.forEach(table => table.scrollLeft -= scrollStep);
+                    }
+                    break;
+                case 'ArrowRight':
+                    if (tables.length > 0) {
+                        e.preventDefault();
+                        tables.forEach(table => table.scrollLeft += scrollStep);
+                    }
+                    break;
             }
         });
+
+        // Ré-initialiser globalement si besoin
+        window.reInitTables = initDragToScroll;
+
+        // Gestion de la déconnexion - supprimée car maintenant gérée par le bouton logout-form
     </script>
     @yield('scripts')
 </body>

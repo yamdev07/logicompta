@@ -13,8 +13,9 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
-            'auth.web' => \App\Http\Middleware\AuthMiddleware::class,
-        ]);
+        'auth.web' => \App\Http\Middleware\AuthMiddleware::class,
+        'auth.from.token' => \App\Http\Middleware\AuthFromToken::class,
+]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

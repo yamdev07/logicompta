@@ -12,16 +12,15 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // Création de l'utilisateur de test
-        User::factory()->create([
-            'name' => 'Logicompta Admin',
-            'email' => 'admin@logicompta.com',
-        ]);
-
         // Appel des seeders comptables
         $this->call([
             AccountSeeder::class,
+            EntrepriseSeeder::class,
+            UserSeeder::class,
             JournalSeeder::class,
+            EntrepriseSeeder::class,
+            UserSeeder::class,
+            JournalEntrySeeder::class,
         ]);
     }
 }

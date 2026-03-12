@@ -253,13 +253,16 @@
             <img src="{{ asset('images/ChatGPT Image 11 mars 2026, 10_41_49.png') }}" alt="Comptafriq Logo" class="logo">
             <div class="welcome-text">
                 <h2>Connectez-vous</h2>
-                <p>Accédez à votre espace Comptafriq</p>
             </div>
         </div>
         
         <!-- Formulaire -->
         <div class="form-container">
+<<<<<<< HEAD
             <form id="loginForm" method="POST" action="{{ url('/login') }}">
+=======
+            <form action="{{ route('login.post') }}" method="POST">
+>>>>>>> main
                 @csrf
                 <div class="form-group">
                     <label for="email">Email</label>
@@ -280,14 +283,25 @@
             
             <button class="btn-secondary" onclick="window.location.href='{{ url('/forgot-password') }}'">Mot de passe oublié ?</button>
             
-            @if ($errors->any())
-                <div class="message error">
-                    @foreach ($errors->all() as $error)
-                        <div>{{ $error }}</div>
-                    @endforeach
-                </div>
-            @endif
-        </div>
-    </div>
+        @if ($errors->any())
+            <div class="message error">
+                @foreach ($errors->all() as $error)
+                    <div>{{ $error }}</div>
+                @endforeach
+            </div>
+        @endif
+
+        @if(session('error'))
+            <div class="mt-4 p-3 bg-red-100 text-red-700 text-sm rounded-lg">
+                {{ session('error') }}
+            </div>
+        @endif
+
+        <p style="margin-top: 1.5rem; color: #9CA3AF; font-size: 0.9rem;">
+            Pas encore de compte ? 
+            <a href="{{ route('signup') }}" style="color: #3B82F6; text-decoration: none; font-weight: 600; cursor: pointer;">
+                S'inscrire
+            </a>
+</p>
 </body>
 </html>
