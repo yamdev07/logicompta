@@ -332,6 +332,7 @@
                 if (data.success) {
                     currentToken = data.token;
                     localStorage.setItem('comptafriq_token', currentToken);
+                    localStorage.setItem('comptafriq_user', JSON.stringify(data.user));
                     
                     // Redirection immédiate vers le dashboard
                     window.location.href = '{{ url('/dashbord') }}';

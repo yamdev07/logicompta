@@ -196,32 +196,14 @@
             .sidebar {
                 position: fixed;
                 top: 0;
-                left: 0;
-                width: 260px;
+                left: -260px;
                 height: 100dvh;
                 z-index: 2000; 
-                transform: translateX(-100%);
                 padding-top: calc(1rem + env(safe-area-inset-top, 0));
                 padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0));
             }
             .sidebar.mobile-open {
-                transform: translateX(0);
-            }
-            
-            /* Orientation de la transition vers le transform */
-            .sidebar-transition {
-                transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            }
-            
-            #sidebar-overlay {
-                transition: opacity 0.3s ease, visibility 0.3s;
-                visibility: hidden;
-                opacity: 0;
-                display: block !important; /* On gère par visibility/opacity pour la fluidité */
-            }
-            #sidebar-overlay.active {
-                visibility: visible;
-                opacity: 1;
+                left: 0;
             }
             
             /* Propagation de la couleur du header vers le haut (encoche) */
@@ -244,8 +226,8 @@
     </script>
 </head>
 <body class="bg-bg min-h-screen">
-    <!-- Overlay for mobile (Visibility managed by JS) -->
-    <div id="sidebar-overlay" class="fixed inset-0 bg-gray-900/40 dark:bg-black/80 z-[1999] md:hidden"></div>
+    <!-- Overlay for mobile -->
+    <div id="sidebar-overlay" class="fixed inset-0 bg-gray-900/30 dark:bg-black/80 z-[1999] hidden md:hidden transition-opacity duration-300"></div>
 
     <div class="flex h-[100dvh] overflow-hidden relative">
         <!-- Sidebar -->
@@ -380,63 +362,15 @@
             });
         }
 
-        // Mobile Sidebar Toggle
-        const toggleMobile = (forceState) => {
-            const isOpen = forceState !== undefined ? forceState : !sidebar.classList.contains('mobile-open');
-            
-            if (isOpen) {
-                sidebar.classList.add('mobile-open');
-                sidebarOverlay.classList.add('active');
-            } else {
-                sidebar.classList.remove('mobile-open');
-                sidebarOverlay.classList.remove('active');
-            }
+        // Mobile Sidebar
+        const toggleMobile = () => {
+            sidebar.classList.toggle('mobile-open');
+            sidebarOverlay.classList.toggle('hidden');
         };
 
-        if (openMobileBtn) openMobileBtn.addEventListener('click', () => toggleMobile(true));
-        if (closeMobileBtn) closeMobileBtn.addEventListener('click', () => toggleMobile(false));
-        if (sidebarOverlay) sidebarOverlay.addEventListener('click', () => toggleMobile(false));
-
-        // --- Système de Swipe Fluide (Optimisé) ---
-        let touchStartX = 0;
-        let touchCurrentX = 0;
-        let isSwiping = false;
-
-        sidebar.addEventListener('touchstart', e => {
-            if (window.innerWidth > 768 || !sidebar.classList.contains('mobile-open')) return;
-            touchStartX = e.touches[0].clientX;
-            isSwiping = true;
-            sidebar.style.transition = 'none'; // Désactive transition CSS
-            sidebarOverlay.style.transition = 'none';
-        }, { passive: true });
-
-        sidebar.addEventListener('touchmove', e => {
-            if (!isSwiping) return;
-            touchCurrentX = e.touches[0].clientX;
-            let deltaX = touchStartX - touchCurrentX;
-            
-            if (deltaX > 0) { // On pousse vers la gauche
-                sidebar.style.transform = `translateX(${-deltaX}px)`;
-                let progress = Math.min(deltaX / 260, 1);
-                sidebarOverlay.style.opacity = (0.8 - (progress * 0.8)).toString(); // 0.8 est l'opacité max du black/80
-            }
-        }, { passive: true });
-
-        sidebar.addEventListener('touchend', e => {
-            if (!isSwiping) return;
-            isSwiping = false;
-            
-            sidebar.style.transition = ''; // Restore CSS transitions
-            sidebarOverlay.style.transition = '';
-            sidebarOverlay.style.opacity = '';
-            
-            let deltaX = touchStartX - touchCurrentX;
-            sidebar.style.transform = ''; 
-            
-            if (deltaX > 70) { // Seuil de fermeture
-                toggleMobile(false);
-            }
-        }, { passive: true });
+        if (openMobileBtn) openMobileBtn.addEventListener('click', toggleMobile);
+        if (closeMobileBtn) closeMobileBtn.addEventListener('click', toggleMobile);
+        if (sidebarOverlay) sidebarOverlay.addEventListener('click', toggleMobile);
 
         // Load Initial State
         const savedState = localStorage.getItem('sidebar-collapsed');

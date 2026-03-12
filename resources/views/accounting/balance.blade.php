@@ -116,8 +116,8 @@
                         <td colspan="2" class="px-6 py-6 tracking-[0.2em] border-r border-white/10">Total Balance Générale</td>
                         
                         <!-- Totaux Début -->
-                        <td class="px-4 py-6 text-right border-r border-white/10 opacity-40 whitespace-nowrap">0,00</td>
-                        <td class="px-4 py-6 text-right border-r border-white/10 opacity-40 whitespace-nowrap">0,00</td>
+                        <td class="px-4 py-6 text-right border-r border-white/10 opacity-40 whitespace-nowrap">-</td>
+                        <td class="px-4 py-6 text-right border-r border-white/10 opacity-40 whitespace-nowrap">-</td>
                         
                         <!-- Totaux Mouvements -->
                         <td class="px-4 py-6 text-right border-r border-white/10 font-mono text-white whitespace-nowrap">{{ number_format($grandTotal['mouv_debit'], 2, ',', ' ') }}</td>

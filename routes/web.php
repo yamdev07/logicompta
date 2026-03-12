@@ -18,6 +18,12 @@ Route::get('/signup', function () {
     return view('signup');
 });
 
+// Route pour la page de configuration d'entreprise (après inscription)
+Route::get('/entreprise-setup', function () {
+    return view('entreprise-setup');
+});
+
+
 // Route pour la page de mot de passe oublié
 Route::get('/forgot-password', function () {
     return view('forgot-password');

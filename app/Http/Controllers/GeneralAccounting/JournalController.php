@@ -14,12 +14,44 @@ class JournalController extends Controller
 {
     public function index()
     {
+        // Pour le moment, permettre l'accès sans authentification
+        // TODO: Ajouter l'authentification plus tard
         $entries = JournalEntry::with(['journal', 'lines.account'])
             ->orderBy('date', 'desc')
             ->orderBy('id', 'desc')
             ->paginate(50);
             
         return view('accounting.journal.index', compact('entries'));
+    }
+
+    private function getUserFromToken()
+    {
+        // Pour les requêtes web, essayer de récupérer l'utilisateur depuis session
+        // Sinon, essayer le token Sanctum
+        try {
+            // D'abord essayer via session Laravel standard
+            if (session()->has('comptafriq_user_id')) {
+                return \App\Models\User::find(session('comptafriq_user_id'));
+            }
+            
+            // Ensuite essayer via token Sanctum
+            $token = request()->bearerToken() ?: request()->header('X-Auth-Token');
+            if (!$token) {
+                $authHeader = request()->header('Authorization');
+                if ($authHeader && str_starts_with($authHeader, 'Bearer ')) {
+                    $token = substr($authHeader, 7);
+                }
+            }
+            
+            if ($token) {
+                $model = \Laravel\Sanctum\PersonalAccessToken::findToken($token);
+                return $model ? $model->tokenable : null;
+            }
+        } catch (\Exception $e) {
+            // En cas d'erreur, retourner null
+        }
+        
+        return null;
     }
 
     public function ledger(Request $request, $account_id = null)
@@ -64,11 +96,20 @@ class JournalController extends Controller
 
     public function create()
     {
+        $user = $this->getUserFromToken();
+        if (!$user) {
+            return redirect()->route('accounting.ledger')->with('error', 'Vous devez être connecté pour créer des écritures.');
+        }
+        
+        if (!$user->entreprise_id) {
+            return redirect()->route('accounting.ledger')->with('error', 'Vous devez être associé à une entreprise pour créer des écritures. Utilisez le formulaire ci-dessous pour rejoindre une entreprise.');
+        }
+        
         $journals = Journal::all();
         $accounts = Account::orderBy('code_compte')->get()->groupBy('classe');
         
         // Prédiction du prochain numéro de pièce (format séquentiel simple)
-        $latestEntry = JournalEntry::latest()->first();
+        $latestEntry = JournalEntry::where('entreprise_id', $user->entreprise_id)->latest()->first();
         $nextNum = $latestEntry ? intval(preg_replace('/[^0-9]/', '', $latestEntry->numero_piece)) + 1 : 1;
         $nextPieceNumber = str_pad($nextNum, 6, '0', STR_PAD_LEFT);
 
@@ -118,8 +159,14 @@ class JournalController extends Controller
         try {
             DB::beginTransaction();
 
+            // Récupérer l'entreprise de l'utilisateur connecté via token
+            $user = $this->getUserFromToken();
+            if (!$user || !$user->entreprise_id) {
+                throw new \Exception('Vous devez être associé à une entreprise pour créer des écritures.');
+            }
+
             // Génération d'un numéro de pièce séquentiel automatique
-            $latestEntry = JournalEntry::latest()->first();
+            $latestEntry = JournalEntry::where('entreprise_id', $user->entreprise_id)->latest()->first();
             $nextNum = $latestEntry ? intval(preg_replace('/[^0-9]/', '', $latestEntry->numero_piece)) + 1 : 1;
             $numeroPiece = str_pad($nextNum, 6, '0', STR_PAD_LEFT);
 
@@ -128,6 +175,7 @@ class JournalController extends Controller
                 'numero_piece' => $numeroPiece,
                 'date' => $request->date,
                 'libelle' => $request->libelle,
+                'entreprise_id' => $user->entreprise_id,
             ]);
 
             foreach ($request->lines as $line) {

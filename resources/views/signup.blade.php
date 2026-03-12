@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+ <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
@@ -273,13 +273,15 @@
             document.getElementById('message').style.display = 'none';
         }
 
-        // Inscription
-        async function signup(event) {
+        // Inscription (Modifié : Ne crée pas l'utilisateur immédiatement)
+        function signup(event) {
             event.preventDefault();
             const name = document.getElementById('name').value;
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
             const passwordConfirm = document.getElementById('passwordConfirm').value;
+
+            hideMessage();
 
             if (!name || !email || !password || !passwordConfirm) {
                 showMessage('Veuillez remplir tous les champs', 'error');
@@ -297,51 +299,23 @@
             }
 
             const btn = event.target.querySelector('button[type="submit"]');
-            btn.textContent = 'Inscription...';
+            btn.textContent = 'Traitement...';
             btn.disabled = true;
 
-            try {
-                const response = await fetch(`${API_BASE}/register`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ 
-                        name, 
-                        email, 
-                        password, 
-                        password_confirmation: passwordConfirm,
-                        role: 'utilisateur'
-                    })
-                });
+            // Sauvegarder les données temporairement
+            const pendingUser = {
+                name,
+                email,
+                password,
+                password_confirmation: passwordConfirm
+            };
 
-                const data = await response.json();
+            localStorage.setItem('logicompta_pending_user', JSON.stringify(pendingUser));
 
-                if (data.success) {
-                    showMessage('✅ Inscription réussie ! Redirection vers la connexion...', 'success');
-                    
-                    // Vider les champs
-                    document.getElementById('name').value = '';
-                    document.getElementById('email').value = '';
-                    document.getElementById('password').value = '';
-                    document.getElementById('passwordConfirm').value = '';
-                    
-                    // Attendre 2 secondes avant de rediriger
-                    setTimeout(() => {
-                        window.location.href = '{{ url('/login') }}';
-                    }, 2000);
-                } else {
-                    showMessage(data.message || 'Erreur d\'inscription', 'error');
-                }
-            } catch (error) {
-                showMessage('Erreur de connexion au serveur', 'error');
-                console.error('Erreur:', error);
-            } finally {
-                if (btn.textContent !== '✓ Inscription réussie!') {
-                    btn.textContent = 'S\'inscrire';
-                    btn.disabled = false;
-                }
-            }
+            // Redirection vers la page de configuration
+            setTimeout(() => {
+                window.location.href = '{{ url("/entreprise-setup") }}';
+            }, 500);
         }
 
         // Event listener

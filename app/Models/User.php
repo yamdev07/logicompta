@@ -20,8 +20,12 @@ class User extends Authenticatable
      */
     protected $fillable = [
         'name',
+        'prenom',
         'email',
         'password',
+        'telephone',
+        'role',
+        'entreprise_id',
     ];
 
     /**
@@ -45,5 +49,29 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+
+    /**
+     * Relation vers l'entreprise
+     */
+    public function entreprise()
+    {
+        return $this->belongsTo(Entreprise::class);
+    }
+
+    /**
+     * Vérifie si l'utilisateur a une entreprise
+     */
+    public function hasEntreprise(): bool
+    {
+        return !is_null($this->entreprise_id);
+    }
+
+    /**
+     * Vérifie si l'utilisateur est admin
+     */
+    public function isAdmin(): bool
+    {
+        return $this->role === 'admin';
     }
 }
